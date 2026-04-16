@@ -127,6 +127,17 @@ describe("DesktopApplicationMenu", () => {
 
       settingsClick({} as Electron.MenuItem, {} as Electron.BrowserWindow, {} as KeyboardEvent);
       assert.equal(yield* Deferred.await(selectedAction), "open-settings");
+
+      const windowMenu = template.find((item) => item.label === "Window");
+      assert.isDefined(windowMenu);
+      assert.equal(windowMenu.role, undefined);
+      if (!Array.isArray(windowMenu.submenu)) {
+        throw new Error("Expected Window menu submenu to be an array.");
+      }
+      assert.deepEqual(
+        windowMenu.submenu.map((item) => item.role),
+        ["minimize"],
+      );
     }),
   );
 });
