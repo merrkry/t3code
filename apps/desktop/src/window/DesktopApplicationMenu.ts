@@ -32,6 +32,14 @@ const { logInfo: logUpdaterInfo } = DesktopObservability.makeComponentLogger("de
 
 const { logError: logMenuError } = DesktopObservability.makeComponentLogger("desktop-menu");
 
+const windowMenuForPlatform = (platform: NodeJS.Platform): Electron.MenuItemConstructorOptions =>
+  platform === "darwin"
+    ? { role: "windowMenu" }
+    : {
+        label: "Window",
+        submenu: [{ role: "minimize" }],
+      };
+
 const dispatchMenuAction = Effect.fn("desktop.menu.dispatchMenuAction")(function* (
   action: string,
 ): Effect.fn.Return<void, DesktopWindow.DesktopWindowError, DesktopWindow.DesktopWindow> {
@@ -189,7 +197,7 @@ const make = Effect.gen(function* () {
           { role: "togglefullscreen" },
         ],
       },
-      { role: "windowMenu" },
+      windowMenuForPlatform(environment.platform),
       {
         role: "help",
         submenu: [
