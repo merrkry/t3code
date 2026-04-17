@@ -103,12 +103,19 @@ export function isSameOriginRendererNavigation(input: {
   }
 }
 
-function getWindowTitleBarOptions(shouldUseDarkColors: boolean): WindowTitleBarOptions {
-  if (process.platform === "darwin") {
+function getWindowTitleBarOptions(
+  platform: NodeJS.Platform,
+  shouldUseDarkColors: boolean,
+): WindowTitleBarOptions {
+  if (platform === "darwin") {
     return {
       titleBarStyle: "hiddenInset",
       trafficLightPosition: { x: 16, y: 18 },
     };
+  }
+
+  if (platform === "linux") {
+    return {};
   }
 
   return {
@@ -123,6 +130,7 @@ function getWindowTitleBarOptions(shouldUseDarkColors: boolean): WindowTitleBarO
 
 function syncWindowAppearance(
   window: Electron.BrowserWindow,
+  platform: NodeJS.Platform,
   shouldUseDarkColors: boolean,
 ): Effect.Effect<void> {
   return Effect.sync(() => {
@@ -131,7 +139,7 @@ function syncWindowAppearance(
     }
 
     window.setBackgroundColor(getInitialWindowBackgroundColor(shouldUseDarkColors));
-    const { titleBarOverlay } = getWindowTitleBarOptions(shouldUseDarkColors);
+    const { titleBarOverlay } = getWindowTitleBarOptions(platform, shouldUseDarkColors);
     if (typeof titleBarOverlay === "object") {
       window.setTitleBarOverlay(titleBarOverlay);
     }
@@ -186,7 +194,7 @@ const make = Effect.gen(function* () {
       backgroundColor: getInitialWindowBackgroundColor(shouldUseDarkColors),
       ...iconOption,
       title: environment.displayName,
-      ...getWindowTitleBarOptions(shouldUseDarkColors),
+      ...getWindowTitleBarOptions(environment.platform, shouldUseDarkColors),
       webPreferences: {
         preload: environment.preloadPath,
         contextIsolation: true,
@@ -387,7 +395,7 @@ const make = Effect.gen(function* () {
     syncAppearance: Effect.gen(function* () {
       const shouldUseDarkColors = yield* electronTheme.shouldUseDarkColors;
       yield* electronWindow.syncAllAppearance((window) =>
-        syncWindowAppearance(window, shouldUseDarkColors),
+        syncWindowAppearance(window, environment.platform, shouldUseDarkColors),
       );
     }).pipe(Effect.withSpan("desktop.window.syncAppearance")),
   });
