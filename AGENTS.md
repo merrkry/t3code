@@ -1,5 +1,7 @@
 # AGENTS.md
 
+This is a customized fork. Refer to `PATCH.md` for guidelines on local changes and workflows for syncing with upstream.
+
 ## Task Completion Requirements
 
 - All of `bun fmt`, `bun lint`, and `bun typecheck` must pass before considering tasks completed.
