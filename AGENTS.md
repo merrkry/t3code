@@ -1,5 +1,7 @@
 # AGENTS.md
 
+This is a customized fork. Refer to `PATCH.md` for guidelines on local changes and workflows for syncing with upstream.
+
 ## Task Completion Requirements
 
 - `vp check` and `vp run typecheck` must pass before considering tasks completed.
