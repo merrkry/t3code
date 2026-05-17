@@ -1106,6 +1106,7 @@ export const enrichCursorSnapshot = (input: {
   readonly publishSnapshot: (snapshot: ServerProvider) => Effect.Effect<void>;
   readonly stampIdentity?: (snapshot: ServerProvider) => ServerProvider;
   readonly httpClient: HttpClient.HttpClient;
+  readonly environment?: NodeJS.ProcessEnv;
 }): Effect.Effect<void> => {
   const { settings, snapshot, publishSnapshot } = input;
   const stampIdentity = input.stampIdentity ?? ((value) => value);
@@ -1114,7 +1115,11 @@ export const enrichCursorSnapshot = (input: {
     return Effect.void;
   }
 
-  return enrichProviderSnapshotWithVersionAdvisory(snapshot, input.maintenanceCapabilities).pipe(
+  return enrichProviderSnapshotWithVersionAdvisory(
+    snapshot,
+    input.maintenanceCapabilities,
+    input.environment ? { env: input.environment } : undefined,
+  ).pipe(
     Effect.provideService(HttpClient.HttpClient, input.httpClient),
     Effect.flatMap((enrichedSnapshot) =>
       publishSnapshot(stampIdentity(enrichedSnapshot)).pipe(Effect.as(enrichedSnapshot)),

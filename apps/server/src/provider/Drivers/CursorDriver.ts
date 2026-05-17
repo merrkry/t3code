@@ -148,6 +148,7 @@ export const CursorDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
             publishSnapshot,
             stampIdentity,
             httpClient,
+            environment: processEnv,
           }),
         refreshInterval: SNAPSHOT_REFRESH_INTERVAL,
       }).pipe(

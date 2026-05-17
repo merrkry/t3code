@@ -248,10 +248,9 @@ export const make = Effect.fn("ProviderMaintenanceRunner.make")(function* () {
         return Effect.forEach(
           refreshedProviders,
           (refreshedProvider) =>
-            enrichProviderSnapshotWithVersionAdvisory(
-              refreshedProvider,
-              maintenanceCapabilities,
-            ).pipe(Effect.provideService(HttpClient.HttpClient, httpClient)),
+            enrichProviderSnapshotWithVersionAdvisory(refreshedProvider, maintenanceCapabilities, {
+              env: process.env,
+            }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient)),
           {
             concurrency: "unbounded",
           },

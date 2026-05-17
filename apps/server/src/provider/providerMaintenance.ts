@@ -14,6 +14,7 @@ import { HttpClient, HttpClientRequest } from "effect/unstable/http";
 
 const LATEST_VERSION_CACHE_TTL_MS = 60 * 60 * 1_000;
 const LATEST_VERSION_TIMEOUT_MS = 4_000;
+const DISABLE_PROVIDER_UPDATE_CHECK_ENV = "T3CODE_DISABLE_PROVIDER_UPDATE_CHECK";
 const PROVIDER_UPDATE_ACTION_TOAST_MESSAGE = "Install the update now or review provider settings.";
 
 export interface ProviderMaintenanceCapabilities {
@@ -70,6 +71,11 @@ export function clearLatestProviderVersionCacheForTests(): void {
 
 function nonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+export function isProviderUpdateCheckDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  const value = env[DISABLE_PROVIDER_UPDATE_CHECK_ENV]?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
 export function makeProviderMaintenanceCapabilities(input: {
@@ -446,9 +452,25 @@ export const resolveLatestProviderVersion = Effect.fn("resolveLatestProviderVers
 
 export const enrichProviderSnapshotWithVersionAdvisory = Effect.fn(
   "enrichProviderSnapshotWithVersionAdvisory",
-)(function* (snapshot: ServerProvider, maintenanceCapabilities?: ProviderMaintenanceCapabilities) {
+)(function* (
+  snapshot: ServerProvider,
+  maintenanceCapabilities?: ProviderMaintenanceCapabilities,
+  options?: { readonly env?: NodeJS.ProcessEnv },
+) {
   const capabilities =
     maintenanceCapabilities ?? makeManualProviderMaintenanceCapabilities(snapshot.driver);
+  if (isProviderUpdateCheckDisabled(options?.env)) {
+    return {
+      ...snapshot,
+      versionAdvisory: createProviderVersionAdvisory({
+        driver: snapshot.driver,
+        currentVersion: snapshot.version,
+        checkedAt: snapshot.checkedAt,
+        maintenanceCapabilities: capabilities,
+      }),
+    };
+  }
+
   if (!snapshot.enabled || !snapshot.installed || !snapshot.version) {
     return {
       ...snapshot,
