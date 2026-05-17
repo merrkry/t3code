@@ -39,6 +39,7 @@ import {
 } from "../providerSnapshot.ts";
 import {
   enrichProviderSnapshotWithVersionAdvisory,
+  isProviderUpdateCheckDisabled,
   type ProviderMaintenanceCapabilities,
 } from "../providerMaintenance.ts";
 import { AcpSessionRuntime } from "../acp/AcpSessionRuntime.ts";
@@ -1237,21 +1238,25 @@ export const enrichCursorSnapshot = (input: {
 }): Effect.Effect<void, never, ChildProcessSpawner.ChildProcessSpawner> => {
   const { settings, snapshot, publishSnapshot } = input;
   const stampIdentity = input.stampIdentity ?? ((value) => value);
+  const updateCheckDisabled = isProviderUpdateCheckDisabled(input.environment);
 
-  const enrichVersionAdvisory = enrichProviderSnapshotWithVersionAdvisory(
-    snapshot,
-    input.maintenanceCapabilities,
-  ).pipe(
-    Effect.provideService(HttpClient.HttpClient, input.httpClient),
-    Effect.flatMap((enrichedSnapshot) =>
-      publishSnapshot(stampIdentity(enrichedSnapshot)).pipe(Effect.as(enrichedSnapshot)),
-    ),
-    Effect.catchCause((cause) =>
-      Effect.logWarning("Cursor version advisory enrichment failed", {
-        cause: Cause.pretty(cause),
-      }).pipe(Effect.as(snapshot)),
-    ),
-  );
+  const enrichVersionAdvisory = updateCheckDisabled
+    ? Effect.succeed(snapshot)
+    : enrichProviderSnapshotWithVersionAdvisory(
+        snapshot,
+        input.maintenanceCapabilities,
+        input.environment ? { env: input.environment } : undefined,
+      ).pipe(
+        Effect.provideService(HttpClient.HttpClient, input.httpClient),
+        Effect.flatMap((enrichedSnapshot) =>
+          publishSnapshot(stampIdentity(enrichedSnapshot)).pipe(Effect.as(enrichedSnapshot)),
+        ),
+        Effect.catchCause((cause) =>
+          Effect.logWarning("Cursor version advisory enrichment failed", {
+            cause: Cause.pretty(cause),
+          }).pipe(Effect.as(snapshot)),
+        ),
+      );
 
   return enrichVersionAdvisory.pipe(
     Effect.flatMap((baseSnapshot) => {

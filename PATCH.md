@@ -25,6 +25,12 @@ This document, as well as the commit messages, should be updated accordingly.
 
 In this section, each title corresponds to a commit message, and main text describes the changes.
 
+### docs: init PATCH.md
+
+This fork rebases onto upstream occasionally, so future agents need a stable description of why these patches exist and what scope should be preserved.
+
+See `Workflow` section above for detailed guidelines.
+
 ### web: disable composer spellcheck
 
 Spellcheck works poorly for prompts, code, commands, and paths. Frequent false positives are distracting.
@@ -50,8 +56,8 @@ The custom title bar setup does not play well with server-side decorations on Li
 
 Keep Linux on the default native title bar path.
 
-### docs: init PATCH.md
+### server: allow disabling provider update checks
 
-This fork rebases onto upstream occasionally, so future agents need a stable description of why these patches exist and what scope should be preserved.
+Provider harness update checks can create distracting update affordances and unnecessary background network traffic in this fork.
 
-See `Workflow` section above for detailed guidelines.
+Allow `T3CODE_DISABLE_PROVIDER_UPDATE_CHECK` to suppress provider latest-version checks and update-available UI derived from those checks.

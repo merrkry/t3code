@@ -43,6 +43,7 @@ import type { ServerProviderDraft } from "../providerSnapshot.ts";
 import { mergeProviderInstanceEnvironment } from "../ProviderInstanceEnvironment.ts";
 import {
   enrichProviderSnapshotWithVersionAdvisory,
+  isProviderUpdateCheckDisabled,
   makePackageManagedProviderMaintenanceResolver,
   normalizeCommandPath,
   resolveProviderMaintenanceCapabilitiesEffect,
@@ -123,6 +124,7 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
         binaryPath: effectiveConfig.binaryPath,
         env: processEnv,
       });
+      const updateCheckDisabled = isProviderUpdateCheckDisabled(processEnv);
       const continuationGroupKey = yield* makeClaudeContinuationGroupKey(effectiveConfig);
       const stampIdentity = withInstanceIdentity({
         instanceId,
@@ -169,11 +171,17 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
         initialSnapshot: (settings) =>
           makePendingClaudeProvider(settings).pipe(Effect.map(stampIdentity)),
         checkProvider,
-        enrichSnapshot: ({ snapshot, publishSnapshot }) =>
-          enrichProviderSnapshotWithVersionAdvisory(snapshot, maintenanceCapabilities).pipe(
-            Effect.provideService(HttpClient.HttpClient, httpClient),
-            Effect.flatMap((enrichedSnapshot) => publishSnapshot(enrichedSnapshot)),
-          ),
+        ...(updateCheckDisabled
+          ? {}
+          : {
+              enrichSnapshot: ({ snapshot, publishSnapshot }) =>
+                enrichProviderSnapshotWithVersionAdvisory(snapshot, maintenanceCapabilities, {
+                  env: processEnv,
+                }).pipe(
+                  Effect.provideService(HttpClient.HttpClient, httpClient),
+                  Effect.flatMap((enrichedSnapshot) => publishSnapshot(enrichedSnapshot)),
+                ),
+            }),
         refreshInterval: SNAPSHOT_REFRESH_INTERVAL,
       }).pipe(
         Effect.mapError(

@@ -43,6 +43,7 @@ import type { ServerProviderDraft } from "../providerSnapshot.ts";
 import { mergeProviderInstanceEnvironment } from "../ProviderInstanceEnvironment.ts";
 import {
   enrichProviderSnapshotWithVersionAdvisory,
+  isProviderUpdateCheckDisabled,
   makePackageManagedProviderMaintenanceResolver,
   resolveProviderMaintenanceCapabilitiesEffect,
 } from "../providerMaintenance.ts";
@@ -139,6 +140,7 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         binaryPath: effectiveConfig.binaryPath,
         env: processEnv,
       });
+      const updateCheckDisabled = isProviderUpdateCheckDisabled(processEnv);
 
       // `makeCodexAdapter` and `makeCodexTextGeneration` have `never` error
       // channels at construction time — their failure modes are all on the
@@ -169,11 +171,17 @@ export const CodexDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
         initialSnapshot: (settings) =>
           makePendingCodexProvider(settings).pipe(Effect.map(stampIdentity)),
         checkProvider,
-        enrichSnapshot: ({ snapshot, publishSnapshot }) =>
-          enrichProviderSnapshotWithVersionAdvisory(snapshot, maintenanceCapabilities).pipe(
-            Effect.provideService(HttpClient.HttpClient, httpClient),
-            Effect.flatMap((enrichedSnapshot) => publishSnapshot(enrichedSnapshot)),
-          ),
+        ...(updateCheckDisabled
+          ? {}
+          : {
+              enrichSnapshot: ({ snapshot, publishSnapshot }) =>
+                enrichProviderSnapshotWithVersionAdvisory(snapshot, maintenanceCapabilities, {
+                  env: processEnv,
+                }).pipe(
+                  Effect.provideService(HttpClient.HttpClient, httpClient),
+                  Effect.flatMap((enrichedSnapshot) => publishSnapshot(enrichedSnapshot)),
+                ),
+            }),
         refreshInterval: SNAPSHOT_REFRESH_INTERVAL,
       }).pipe(
         Effect.mapError(

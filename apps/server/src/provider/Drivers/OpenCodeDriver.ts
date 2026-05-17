@@ -42,6 +42,7 @@ import type { ServerProviderDraft } from "../providerSnapshot.ts";
 import { mergeProviderInstanceEnvironment } from "../ProviderInstanceEnvironment.ts";
 import {
   enrichProviderSnapshotWithVersionAdvisory,
+  isProviderUpdateCheckDisabled,
   makePackageManagedProviderMaintenanceResolver,
   normalizeCommandPath,
   resolveProviderMaintenanceCapabilitiesEffect,
@@ -126,6 +127,7 @@ export const OpenCodeDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv>
         binaryPath: effectiveConfig.binaryPath,
         env: processEnv,
       });
+      const updateCheckDisabled = isProviderUpdateCheckDisabled(processEnv);
 
       const adapter = yield* makeOpenCodeAdapter(effectiveConfig, {
         instanceId,
@@ -148,11 +150,17 @@ export const OpenCodeDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv>
         initialSnapshot: (settings) =>
           makePendingOpenCodeProvider(settings).pipe(Effect.map(stampIdentity)),
         checkProvider,
-        enrichSnapshot: ({ snapshot, publishSnapshot }) =>
-          enrichProviderSnapshotWithVersionAdvisory(snapshot, maintenanceCapabilities).pipe(
-            Effect.provideService(HttpClient.HttpClient, httpClient),
-            Effect.flatMap((enrichedSnapshot) => publishSnapshot(enrichedSnapshot)),
-          ),
+        ...(updateCheckDisabled
+          ? {}
+          : {
+              enrichSnapshot: ({ snapshot, publishSnapshot }) =>
+                enrichProviderSnapshotWithVersionAdvisory(snapshot, maintenanceCapabilities, {
+                  env: processEnv,
+                }).pipe(
+                  Effect.provideService(HttpClient.HttpClient, httpClient),
+                  Effect.flatMap((enrichedSnapshot) => publishSnapshot(enrichedSnapshot)),
+                ),
+            }),
         refreshInterval: SNAPSHOT_REFRESH_INTERVAL,
       }).pipe(
         Effect.mapError(

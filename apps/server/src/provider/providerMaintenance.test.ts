@@ -4,12 +4,15 @@ import { chmodSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import os from "node:os";
 import path from "node:path";
-import { ProviderDriverKind } from "@t3tools/contracts";
+import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Random from "effect/Random";
+import { HttpClient } from "effect/unstable/http";
 import {
   clearLatestProviderVersionCacheForTests,
   createProviderVersionAdvisory,
+  enrichProviderSnapshotWithVersionAdvisory,
+  isProviderUpdateCheckDisabled,
   makePackageManagedProviderMaintenanceResolver,
   makeProviderMaintenanceCapabilities,
   makeStaticProviderMaintenanceResolver,
@@ -63,6 +66,19 @@ const staticToolUpdate = makeStaticProviderMaintenanceResolver(
     updateLockKey: "static-tool",
   }),
 );
+const readyProviderSnapshot = {
+  instanceId: ProviderInstanceId.make("packageTool"),
+  driver: driver("packageTool"),
+  enabled: true,
+  installed: true,
+  version: "1.0.0",
+  status: "ready",
+  auth: { status: "authenticated" },
+  checkedAt: "2026-04-10T00:00:00.000Z",
+  models: [],
+  slashCommands: [],
+  skills: [],
+} satisfies ServerProvider;
 
 afterEach(() => {
   clearLatestProviderVersionCacheForTests();
@@ -113,6 +129,49 @@ describe("providerMaintenance", () => {
       updateCommand: "npm install -g @example/native-package-tool@latest",
       canUpdate: true,
       message: "Install the update now or review provider settings.",
+    });
+  });
+
+  it("detects provider update checks disabled by environment", () => {
+    expect(isProviderUpdateCheckDisabled({ T3CODE_DISABLE_PROVIDER_UPDATE_CHECK: "1" })).toBe(true);
+    expect(isProviderUpdateCheckDisabled({ T3CODE_DISABLE_PROVIDER_UPDATE_CHECK: "true" })).toBe(
+      true,
+    );
+    expect(isProviderUpdateCheckDisabled({ T3CODE_DISABLE_PROVIDER_UPDATE_CHECK: "0" })).toBe(
+      false,
+    );
+  });
+
+  it("skips latest-version enrichment when provider update checks are disabled", () => {
+    const snapshot = Effect.runSync(
+      enrichProviderSnapshotWithVersionAdvisory(
+        {
+          ...readyProviderSnapshot,
+          versionAdvisory: {
+            status: "behind_latest",
+            currentVersion: "1.0.0",
+            latestVersion: "9.9.9",
+            updateCommand: "npm install -g @example/package-tool@latest",
+            canUpdate: true,
+            checkedAt: "2026-04-10T00:00:00.000Z",
+            message: "Install the update now or review provider settings.",
+          },
+        },
+        packageToolUpdate.resolve(),
+        { env: { T3CODE_DISABLE_PROVIDER_UPDATE_CHECK: "1" } },
+      ).pipe(
+        Effect.provideService(
+          HttpClient.HttpClient,
+          HttpClient.make(() => Effect.die("Provider update check should be disabled.")),
+        ),
+      ),
+    );
+
+    expect(snapshot.versionAdvisory).toMatchObject({
+      status: "unknown",
+      currentVersion: "1.0.0",
+      latestVersion: null,
+      message: null,
     });
   });
 
