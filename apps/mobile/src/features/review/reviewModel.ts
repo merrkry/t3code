@@ -17,7 +17,7 @@ const GIT_SECTION_KINDS = ["working-tree", "branch-range"] as const;
 const GIT_PLACEHOLDER_TITLES = {
   "working-tree": "Uncommitted",
   "branch-range": "Changes",
-} as const satisfies Record<ReviewDiffPreviewSourceKind, string>;
+} as const satisfies Record<Exclude<ReviewDiffPreviewSourceKind, "commit">, string>;
 const UNCOMMITTED_SUBTITLE = "Staged, unstaged, and untracked files";
 
 export interface ReviewSectionItem {
