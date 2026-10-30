@@ -172,8 +172,9 @@ export function useReviewSections(input: {
 
   return {
     error:
-      selectedGitPreview?.error ??
-      activeTurnDiff.error ??
+      (selectedSection?.kind === "turn"
+        ? activeTurnDiff.error
+        : (selectedGitPreview?.error ?? null)) ??
       (selectedSection === null && !fileAccess.isPending && !canReadFiles
         ? (fileAccess.error ?? "This connection cannot read local diffs.")
         : null),

@@ -523,7 +523,7 @@ export function buildReviewSectionItems(input: {
   readonly gitSections: ReadonlyArray<ReviewDiffPreviewSource>;
   readonly turnDiffById: Readonly<Record<string, string | undefined>>;
   readonly gitSectionStates: Readonly<
-    Record<ReviewDiffPreviewSourceKind, "loading" | "failed" | null>
+    Record<Exclude<ReviewDiffPreviewSourceKind, "commit">, "loading" | "failed" | null>
   >;
 }): ReadonlyArray<ReviewSectionItem> {
   const turnItems = getReadyReviewCheckpoints(input.checkpoints).map<ReviewSectionItem>(
